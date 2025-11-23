@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Home, Contact, Compare => Static */
+.home-page,
+.contact-page,
+.compare-page {
+    overflow: hidden !important;
+    height: 100vh;   /* full screen */
+}
 /* ==========================
    Global Variables & Theme
 ========================== */
@@ -353,3 +360,30 @@ body {
   overflow: hidden; /* removes scrollbar */
 }
 
+
+/* Glass Panel Gradient Border */
+.gradient-border {
+  position: relative;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.gradient-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 1px; /* border thickness */
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(0, 255, 255, 0.3) 50%,
+    rgba(0, 180, 180, 0.3) 100%
+  );
+  -webkit-mask: 
+    linear-gradient(#000 0 0) content-box, 
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}

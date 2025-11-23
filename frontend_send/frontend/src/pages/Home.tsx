@@ -23,7 +23,11 @@ export default function Home() {
 
   function onConfirm(models: ModelKey[]) {
     setOpen(false);
-    nav(`/compare?prompt=${encodeURIComponent(pendingPrompt)}&models=${models.join(",")}`);
+    nav(
+      `/compare?prompt=${encodeURIComponent(
+        pendingPrompt
+      )}&models=${models.join(",")}`
+    );
   }
 
   return (
@@ -42,12 +46,21 @@ export default function Home() {
         </p>
 
         <div className="relative w-full max-w-2xl mx-auto">
-          <PromptInput placeholder="Enter your prompt..." onSubmit={handleSubmit} autoFocus />
+          <PromptInput
+            placeholder="Enter your prompt..."
+            onSubmit={handleSubmit}
+            autoFocus
+          />
         </div>
       </div>
 
+
       {/* Model selector dialog */}
-      <ModelSelectorDialog open={open} onClose={() => setOpen(false)} onConfirm={onConfirm} />
+      <ModelSelectorDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        onConfirm={onConfirm}
+      />
     </div>
   );
 }

@@ -8,6 +8,7 @@ export default function Contact() {
       <div className="bg-ai-gradient absolute inset-0"></div>
       <div className="bg-grid absolute inset-0"></div>
 
+
       {/* --- Contact Box --- */}
       <div className="relative z-10 bg-panel/80 border border-panel rounded-2xl shadow-xl p-8 w-[85%] max-w-sm backdrop-blur-md">
         <h1 className="text-2xl font-semibold mb-6 text-primary text-center">

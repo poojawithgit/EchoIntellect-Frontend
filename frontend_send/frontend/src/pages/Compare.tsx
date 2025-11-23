@@ -1,150 +1,111 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { isAuthenticated } from "../utils/auth";
 import ModelPanel from "../components/ModelPanel";
 import type { ModelKey } from "../utils/api";
 import PromptInput from "../components/PromptInput";
-import { computeUniqueSentences, type ModelResponses } from "../utils/diff";
+import { type ModelResponses } from "../utils/diff";
 
 export default function Compare() {
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const prompt = params.get("prompt") || "";
-  const models = (params.get("models") || "")
+
+  const promptParam = params.get("prompt") || "";
+  const modelsParam = (params.get("models") || "")
     .split(",")
     .filter(Boolean) as ModelKey[];
+
+  const [prompt, setPrompt] = useState(promptParam);
+  const [models, setModels] = useState<ModelKey[]>(modelsParam);
+
   const [responses, setResponses] = useState<ModelResponses>({
     gpt: undefined,
     gemini: undefined,
     perplexity: undefined,
     deepseek: undefined,
   });
-  const [fullscreen, setFullscreen] = useState<ModelKey | null>(null);
-  const [highlight, setHighlight] = useState(false);
 
+  const [fullscreen, setFullscreen] = useState<ModelKey | null>(null);
+
+  /** Load previous comparison only once */
+  useEffect(() => {
+    const saved = localStorage.getItem("comparisonData");
+    if (saved && (!promptParam || modelsParam.length === 0)) {
+      const parsed = JSON.parse(saved);
+      setPrompt(parsed.prompt);
+      setModels(parsed.models);
+      setResponses(parsed.responses);
+    }
+  }, []);
+
+  /** Auth check */
   useEffect(() => {
     if (!isAuthenticated()) {
-      nav(
-        `/login?next=${encodeURIComponent(location.pathname + location.search)}`
-      );
+      nav(`/login?next=${encodeURIComponent(location.pathname + location.search)}`);
       return;
     }
-    if (!prompt || models.length === 0) nav("/");
-  }, [prompt, models, nav]);
+  }, []);
+
+  /** Save comparison once responses available */
+  useEffect(() => {
+    const any = Object.values(responses).some((r) => r && r.trim() !== "");
+    if (any) {
+      localStorage.setItem(
+        "comparisonData",
+        JSON.stringify({ prompt, responses, models })
+      );
+    }
+  }, [responses]);
 
   function setResp(model: ModelKey, text: string) {
     setResponses((prev) => ({ ...prev, [model]: text }));
   }
 
-  const allDone = useMemo(
-    () => models.every((m) => (responses as any)[m]),
-    [models, responses]
-  );
-
-  const diffs = useMemo(() => {
-    if (!allDone) return null;
-    const { sentences, uniqueIndices } = computeUniqueSentences(responses);
-    // convert unique sentences to highlighted HTML per model
-    const markup: Partial<Record<ModelKey, string>> = {};
-    for (const m of models) {
-      const arr = sentences[m] || [];
-      const uniq = uniqueIndices[m] || new Set<number>();
-      const html = arr
-        .map((s, i) =>
-          uniq.has(i)
-            ? `<mark class="${
-                m === "gpt"
-                  ? "mark-red"
-                  : m === "gemini"
-                  ? "mark-blue"
-                  : m === "perplexity"
-                  ? "mark-green"
-                  : "mark-yellow"
-              }">${escapeHtml(s)}</mark>`
-            : escapeHtml(s)
-        )
-        .join(" ");
-      markup[m] = html;
-    }
-    return markup;
-  }, [allDone, models, responses]);
-
-  function escapeHtml(s: string) {
-    return s.replace(
-      /[&<>"']/g,
-      (c) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        }[c] as string)
-    );
-  }
-
-  const gridCls = fullscreen
-    ? "grid-cols-1"
-    : models.length === 1
-    ? "grid-cols-1"
-    : models.length === 2
-    ? "grid-cols-1 sm:grid-cols-2"
-    : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
-
-  const panels = models.map((m) => (
-    <div key={m} className={fullscreen && fullscreen !== m ? "hidden" : ""}>
-      <ModelPanel
-        model={m}
-        initialPrompt={prompt}
-        onHeaderClick={() => setFullscreen((fs) => (fs === m ? null : m))}
-        onResponse={(t) => setResp(m, t)}
-        highlightMarkup={highlight && diffs ? diffs[m] || null : null}
-      />
-    </div>
-  ));
-
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">
-          Comparing: {models.map((m) => m.toUpperCase()).join(" • ")}
-        </h2>
-        <div className="flex items-center gap-2">
-          {allDone && (
-            <button
-              className="btn btn-ghost"
-              onClick={() => setHighlight((h) => !h)}
-            >
-              {highlight ? "Hide differences" : "Highlight differences"}
-            </button>
-          )}
-          {fullscreen && (
-            <button
-              className="btn btn-ghost"
-              onClick={() => setFullscreen(null)}
-            >
-              Back
-            </button>
-          )}
+    <div className="relative flex flex-col min-h-screen bg-app text-fg overflow-hidden">
+
+      {/* Background */}
+      <div className="bg-grid" />
+      <div className="bg-ai-gradient" />
+
+      {/* Content wrapper no-scroll */}
+      <div className="relative z-10 mx-auto max-w-[1400px] px-4 pt-6">
+
+        {/* 4 static columns */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {models.map((m) => (
+            <div key={m} className={fullscreen && fullscreen !== m ? "hidden" : ""}>
+              <ModelPanel
+                model={m}
+                initialPrompt={prompt}
+                onHeaderClick={() => setFullscreen((fs) => (fs === m ? null : m))}
+                onResponse={(t) => setResp(m, t)}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Global input above footer */}
+        <div className="mt-6 mb-28 max-w-[800px] mx-auto">
+          <PromptInput
+            placeholder="Ask all selected models..."
+            onSubmit={(p) => {
+              location.assign(
+                `/compare?prompt=${encodeURIComponent(p)}&models=${models.join(",")}`
+              );
+            }}
+          />
         </div>
       </div>
-      <div className={`grid ${gridCls} gap-4`}>{panels}</div>
-      {/* Universal prompt bar */}
-      <div className="sticky bottom-4">
-        <PromptInput
-          placeholder="Ask all selected models..."
-          onSubmit={(p) => {
-            // reload compare with new prompt, same models
-            location.assign(
-              `/compare?prompt=${encodeURIComponent(p)}&models=${models.join(
-                ","
-              )}`
-            );
-          }}
-        />
-      </div>
+
+      {/* Footer fixed at bottom */}
+      <footer className="absolute bottom-0 left-0 w-full bg-transparent">
+        <div className="mx-auto max-w-[1400px] px-4 py-4 text-center text-muted">
+          © 2025 <span className="font-semibold text-white">EchoIntellect</span>. All rights reserved.
+        </div>
+      </footer>
     </div>
   );
 }
